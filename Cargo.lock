@@ -664,6 +664,7 @@ dependencies = [
  "num-traits",
  "procfs",
  "tokio",
+ "with_daemon",
 ]
 
 [[package]]
@@ -1025,3 +1026,19 @@ name = "windows_x86_64_msvc"
 version = "0.52.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "589f6da84c646204747d1270a2a5661ea66ed1cced2631d546fdfb155959f9ec"
+
+[[package]]
+name = "with_daemon"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6481a64deb25040d51e5e05264a01c420f73ff218ff63c75e96bd444bb5e3b83"
+dependencies = [
+ "daemonize",
+ "fork",
+ "futures",
+ "log",
+ "num",
+ "num-derive",
+ "num-traits",
+ "tokio",
+]
