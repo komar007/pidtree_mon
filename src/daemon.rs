@@ -2,7 +2,7 @@ use std::{collections::HashMap, hash::Hash, ops::Add, sync::Arc, time::Duration}
 
 use futures::{never::Never, stream::unfold, StreamExt};
 use log::{error, info};
-use procfs::{CurrentSI, KernelStats};
+use procfs::{CurrentSI as _, KernelStats};
 use tokio::{
     fs,
     io::{AsyncReadExt, AsyncWriteExt, BufReader, BufWriter},
@@ -109,7 +109,8 @@ async fn measure_pid_loads(out_loads: &broadcast::Sender<Arc<HashMap<i32, f32>>>
                 continue;
             };
             pid_children.entry(stat.ppid).or_default().push(stat.pid);
-            let load = (cur_pid_ticks - last_pid_ticks) as f32 / (cur_tics - last_ticks) as f32;
+            let load = (cur_pid_ticks - last_pid_ticks) as f32 * get_n_cpus() as f32
+                / (cur_tics - last_ticks) as f32;
             loads.insert(stat.pid, load);
         }
         if !loads.is_empty() {
@@ -121,7 +122,12 @@ async fn measure_pid_loads(out_loads: &broadcast::Sender<Arc<HashMap<i32, f32>>>
 
 fn get_cur_ticks() -> u64 {
     let time = KernelStats::current().expect("can't read /proc");
-    (time.total.user + time.total.system + time.total.idle) / time.cpu_time.len() as u64
+    time.total.user + time.total.system + time.total.idle
+}
+
+fn get_n_cpus() -> usize {
+    let time = KernelStats::current().expect("can't read /proc");
+    time.cpu_time.len()
 }
 
 fn get_cumulated<Id, V>(children: &HashMap<Id, Vec<Id>>, values: &HashMap<Id, V>) -> HashMap<Id, V>
