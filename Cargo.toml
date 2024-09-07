@@ -1,7 +1,19 @@
 [package]
 name = "pidtree_mon"
+description = "A CPU load monitor of process trees"
+authors = ["Michał Trybus <komar007@gmail.com>"]
+license = "MIT"
+
+repository = "https://github.com/komar007/pidtree_mon"
+readme = "README.md"
+documentation = "https://docs.rs/pidtree_mon"
+
+categories = ["command-line-utilities"]
+keywords = ["cpu", "process", "linux", "cli", "utility"]
+
 version = "0.1.0"
 edition = "2021"
+
 
 [dependencies]
 tokio = { version = "1.39", features = ["full"] }
