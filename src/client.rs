@@ -76,8 +76,8 @@ impl<'f> Display for OutputLine<'f> {
                 } => {
                     if sum > *value {
                         write!(f, "{}", then)?
-                    } else if let Some(o) = otherwise {
-                        write!(f, "{}", o)?
+                    } else {
+                        write!(f, "{}", otherwise)?
                     }
                 }
             }
