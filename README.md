@@ -7,7 +7,7 @@ according to the parent-child relationship between two PIDs.
 It is useful for example if you want to know the total CPU usage of your session, which you can
 display in [tmux](https://github.com/tmux/tmux) using the following configuration:
 
-```
+```sh
 %hidden WINDOW_LOAD="#( \
     pidtree_mon \
         -f sum \
@@ -25,7 +25,7 @@ set -wg window-status-current-format "#I:#W#F [$WINDOW_LOAD]"
 
 ## Usage
 
-```help
+```
 Usage: pidtree_mon [OPTIONS] <pid>...
 
 Arguments:
