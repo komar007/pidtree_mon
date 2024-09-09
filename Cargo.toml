@@ -6,12 +6,11 @@ license = "MIT OR Apache-2.0"
 
 repository = "https://github.com/komar007/pidtree_mon"
 readme = "README.md"
-documentation = "https://docs.rs/pidtree_mon"
 
 categories = ["command-line-utilities"]
 keywords = ["cpu", "process", "linux", "cli", "utility"]
 
-version = "0.1.2"
+version = "0.2.0"
 edition = "2021"
 
 
