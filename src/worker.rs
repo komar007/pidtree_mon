@@ -2,7 +2,6 @@ use std::{collections::HashMap, hash::Hash, ops::Add, sync::Arc, time::Duration}
 
 use futures::{stream::unfold, StreamExt};
 use log::error;
-use procfs::{CurrentSI as _, KernelStats};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt, BufReader, BufWriter},
     net::UnixStream as TokioUnixStream,
@@ -22,7 +21,8 @@ impl Worker {
             let mut prev = None;
             loop {
                 let next_sample_at = Instant::now() + update_interval;
-                let (next, loads) = measure_pid_loads(prev);
+                let current_ticks = get_ticks_since_boot().expect("should know time in ticks");
+                let (next, loads) = measure_pid_loads(prev, current_ticks);
                 let _ = sender.send(loads.into());
                 prev = Some(next);
                 sleep_until(next_sample_at).await;
@@ -68,7 +68,7 @@ impl Worker {
 }
 
 /// Perform one measurement of CPU loads for each process tree.
-fn measure_pid_loads(prev: Option<Sample>) -> (Sample, HashMap<i32, f32>) {
+fn measure_pid_loads(prev: Option<Sample>, current_ticks: u64) -> (Sample, HashMap<i32, f32>) {
     // The following words always refer to the following specific concepts:
     // total - total number of ticks used by some process or multiple processes since creation,
     // cumulated - the sum of values of a certain property over a process and all its descendants,
@@ -76,8 +76,7 @@ fn measure_pid_loads(prev: Option<Sample>) -> (Sample, HashMap<i32, f32>) {
 
     let mut children: HashMap<_, Vec<_>> = HashMap::new();
     let all_procs = procfs::process::all_processes().expect("can't read /proc");
-    let now_in_ticks = get_cur_ticks();
-    let dt = now_in_ticks - prev.as_ref().map(|prev| prev.t).unwrap_or(0);
+    let dt = current_ticks - prev.as_ref().map(|prev| prev.t).unwrap_or(0);
     let samples = all_procs.filter_map(|prc| {
         let stat = prc.and_then(|prc| prc.stat()).ok()?;
         let sample = PidSample {
@@ -108,7 +107,7 @@ fn measure_pid_loads(prev: Option<Sample>) -> (Sample, HashMap<i32, f32>) {
             .expect("actually cumulated must contain pid");
     }
     let cur = Sample {
-        t: now_in_ticks,
+        t: current_ticks,
         pids: samples,
         children,
     };
@@ -185,7 +184,6 @@ fn measure_pid_loads(prev: Option<Sample>) -> (Sample, HashMap<i32, f32>) {
         let offset = ticks_of_recently_killed - until_prev as i64;
         (pid, self_load + offset as f32 / dt as f32)
     });
-    let final_loads = final_loads.map(|(pid, load)| (pid, load * get_n_cpus() as f32));
     let final_loads = final_loads.collect();
     (cur, final_loads)
 }
@@ -209,22 +207,18 @@ struct PidSample {
     cumulated_total_subtree_ticks: i64,
 }
 
-fn get_cur_ticks() -> u64 {
-    let time = KernelStats::current().expect("can't read /proc");
-    time.total.user
-        + time.total.system
-        + time.total.nice
-        + time.total.idle
-        + time.total.steal.unwrap_or_default()
-        + time.total.guest.unwrap_or_default()
-        + time.total.guest_nice.unwrap_or_default()
-        + time.total.irq.unwrap_or_default()
-        + time.total.softirq.unwrap_or_default()
-}
-
-fn get_n_cpus() -> usize {
-    let time = KernelStats::current().expect("can't read /proc");
-    time.cpu_time.len()
+fn get_ticks_since_boot() -> Result<u64, ()> {
+    let mut t = libc::tms {
+        tms_utime: 0,
+        tms_stime: 0,
+        tms_cutime: 0,
+        tms_cstime: 0,
+    };
+    let ticks = unsafe { libc::times(&mut t) };
+    if ticks < 0 {
+        Err(())?
+    }
+    Ok(ticks as u64)
 }
 
 fn get_cumulated<Id, V, F>(children: &HashMap<Id, Vec<Id>>, value: F) -> HashMap<Id, V>

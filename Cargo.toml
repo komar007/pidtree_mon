@@ -17,6 +17,7 @@ edition = "2021"
 
 [dependencies]
 tokio = { version = "1.39", features = ["full"] }
+libc = "0.2"
 log = "0.4"
 env_logger = "0.11"
 procfs = "0.16"
