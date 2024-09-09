@@ -658,6 +658,7 @@ dependencies = [
  "fork",
  "futures",
  "itertools",
+ "libc",
  "log",
  "num",
  "num-derive",
