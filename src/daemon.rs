@@ -27,9 +27,14 @@ pub async fn run(
     socket_filename: &str,
     update_interval: Duration,
 ) -> Result<Never, Option<String>> {
-    fs::remove_file(socket_filename)
+    if fs::try_exists(&socket_filename)
         .await
-        .map_err(|e| format!("could not remove old socket file: {e}"))?;
+        .map_err(|e| format!("could not use file {socket_filename} as socket: {e}"))?
+    {
+        fs::remove_file(socket_filename)
+            .await
+            .map_err(|e| format!("could not remove old socket file: {e}"))?;
+    }
     let listener =
         UnixListener::bind(socket_filename).map_err(|e| format!("error creating socket: {e}"))?;
     ready.send(()).expect("receiver should not be dropped");
