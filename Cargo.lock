@@ -653,16 +653,10 @@ name = "pidtree_mon"
 version = "0.2.0"
 dependencies = [
  "clap",
- "daemonize",
  "env_logger",
- "fork",
  "futures",
  "itertools",
- "libc",
  "log",
- "num",
- "num-derive",
- "num-traits",
  "procfs",
  "tokio",
  "with_daemon",
