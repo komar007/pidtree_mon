@@ -90,9 +90,9 @@ fast, especially if you need to enumerate all the processes (that's what `ps --f
 calculate the process trees). And having to calculate the loads for a number of windows meant doing
 the heavy work a number of times.
 
-So `pidtree_mon` is a solution to this problem. It optimizes this task by spawining the daemon that
-computes the process forest once a second and calculates total loads for requested subtrees on
-demand.
+So `pidtree_mon` is a solution to this problem. It optimizes this task by spawining a daemon that
+computes the process forest once a second and calculates total loads for all subtrees, and then
+allows clients to read the data they are interested in on demand.
 
 The exact counterpart of the above configuration using `pidtree_mon` would be:
 
