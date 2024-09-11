@@ -1,23 +1,24 @@
 use std::{collections::HashMap, hash::Hash, ops::Add, sync::Arc, time::Duration};
 
 use futures::{never::Never, stream::unfold, StreamExt};
-use log::error;
+use log::warn;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt, BufReader, BufWriter},
     net::UnixStream as TokioUnixStream,
-    sync::broadcast::{self},
+    sync::broadcast::{self, error::RecvError},
     time::{sleep_until, Instant},
 };
 use with_daemon::DaemonControl;
 
 pub struct Worker {
-    loads: broadcast::Sender<Arc<HashMap<i32, f32>>>,
+    loads: broadcast::Receiver<Arc<HashMap<i32, f32>>>,
+    ctrl: DaemonControl,
 }
 
 impl Worker {
-    pub async fn new(update_interval: Duration, _: DaemonControl) -> Result<Self, Never> {
-        let (loads, _) = broadcast::channel(1);
-        let sender = loads.clone();
+    pub async fn new(update_interval: Duration, ctrl: DaemonControl) -> Result<Self, Never> {
+        let (sender, _) = broadcast::channel(1);
+        let loads = sender.subscribe();
         tokio::spawn(async move {
             let mut prev = None;
             loop {
@@ -29,11 +30,11 @@ impl Worker {
                 sleep_until(next_sample_at).await;
             }
         });
-        Ok(Self { loads })
+        Ok(Self { loads, ctrl })
     }
 
     pub async fn handle_client(self: Arc<Self>, mut stream: TokioUnixStream) {
-        let mut loads = self.loads.subscribe();
+        let mut loads = self.loads.resubscribe();
         let (reader, writer) = stream.split();
         let reader = BufReader::new(reader);
         let mut writer = BufWriter::new(writer);
@@ -42,10 +43,12 @@ impl Worker {
         })
         .collect()
         .await;
-        'serving: loop {
+        let worker_failed = 'serving: loop {
             let pid_loads: Vec<_> = {
-                let Ok(loads) = loads.recv().await else {
-                    continue 'serving;
+                let loads = match loads.recv().await {
+                    Ok(loads) => loads,
+                    Err(RecvError::Lagged(_)) => continue 'serving,
+                    Err(RecvError::Closed) => break 'serving true,
                 };
                 pids.iter()
                     .map(|pid| *loads.get(pid).unwrap_or(&f32::NAN))
@@ -53,17 +56,20 @@ impl Worker {
             };
             for pid in pid_loads {
                 if let Err(e) = writer.write_f32(pid).await {
-                    error!("error writing response: {e}");
-                    break 'serving;
+                    warn!("error writing response: {e}");
+                    break 'serving false;
                 }
             }
             if let Err(e) = writer.flush().await {
-                error!("error flushing stream: {e}");
-                break 'serving;
+                warn!("error flushing stream: {e}");
+                break 'serving false;
             }
-        }
+        };
         if let Err(e) = stream.shutdown().await {
-            error!("error shutting down: {e}");
+            warn!("error shutting down: {e}");
+        }
+        if worker_failed {
+            self.ctrl.shutdown().await;
         }
     }
 }
