@@ -34,7 +34,15 @@ fn entrypoint() -> Result<(), String> {
         SOCKET_FILENAME,
         Worker::new(UPDATE_INTERVAL),
         Worker::handle_client,
-        |stream| client::run(stream, config.pids, config.timeout, config.fields),
+        |stream| {
+            client::run(
+                stream,
+                config.pids,
+                config.timeout,
+                config.fields,
+                config.separator,
+            )
+        },
     );
     let client_res = framework_res.map_err(|e| format!("framework: {e}"))?;
     client_res.map_err(|e| format!("client: {e}"))
