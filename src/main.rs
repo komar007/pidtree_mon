@@ -27,7 +27,7 @@ fn main() -> ExitCode {
 }
 
 fn entrypoint() -> Result<(), String> {
-    env_logger::init();
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("none")).init();
     let config = Config::parse();
     let framework_res = with_daemon(
         PID_FILENAME,
