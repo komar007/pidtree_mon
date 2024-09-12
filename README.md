@@ -11,7 +11,7 @@ display in [tmux](https://github.com/tmux/tmux) using the following configuratio
 %hidden WINDOW_LOAD="#( \
     pidtree_mon \
         -f sum \
-        \$(tmux list-panes -t #{window_id} -F '\#{pane_pid}') \
+        \$(tmux list-panes -t #{window_id} -F '##{pane_pid}') \
 )"
 set -wg window-status-format "#I:#W#F [$WINDOW_LOAD]"
 set -wg window-status-current-format "#I:#W#F [$WINDOW_LOAD]"
@@ -101,7 +101,7 @@ The exact counterpart of the above configuration using `pidtree_mon` would be:
         pidtree_mon \
             -t 10 \
             -f 'if_greater:0.5:::' \
-            \$(tmux list-panes -t #{window_id} -F '\#{pane_pid}') \
+            \$(tmux list-panes -t #{window_id} -F '##{pane_pid}') \
 )#[fg=black]"
 set -wg window-status-format "#I$WINDOW_FIRE#W#F"
 set -wg window-status-current-format "#I$WINDOW_FIRE#W#F"
