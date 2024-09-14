@@ -1,6 +1,6 @@
 use std::{collections::HashMap, hash::Hash, ops::Add, sync::Arc, time::Duration};
 
-use futures::{stream::unfold, StreamExt};
+use futures::{never::Never, stream::unfold, StreamExt};
 use log::error;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt, BufReader, BufWriter},
@@ -8,13 +8,14 @@ use tokio::{
     sync::broadcast::{self},
     time::{sleep_until, Instant},
 };
+use with_daemon::DaemonControl;
 
 pub struct Worker {
     loads: broadcast::Sender<Arc<HashMap<i32, f32>>>,
 }
 
 impl Worker {
-    pub async fn new(update_interval: Duration) -> Self {
+    pub async fn new(update_interval: Duration, _: DaemonControl) -> Result<Self, Never> {
         let (loads, _) = broadcast::channel(1);
         let sender = loads.clone();
         tokio::spawn(async move {
@@ -28,7 +29,7 @@ impl Worker {
                 sleep_until(next_sample_at).await;
             }
         });
-        Self { loads }
+        Ok(Self { loads })
     }
 
     pub async fn handle_client(self: Arc<Self>, mut stream: TokioUnixStream) {
