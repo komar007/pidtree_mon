@@ -1,5 +1,26 @@
 # Changelog of `pidtree_mon`
 
+## [0.2.1] - 2024-09-14
+
+### 🚀 Features
+
+- Extended output format specification
+- Disabled all logging by default
+- Updated to new with_daemon 0.2.0
+- Handling worker failure by requesting daemon shutdown
+- Factored float divisions out of measuring loads + docs
+
+### 📚 Documentation
+
+- Fixed incorrect description
+- Fixed errors in example tmux configurations
+- Updated readme
+
+### ⚙️ Miscellaneous Tasks
+
+- Updated upload-artifact from v2 to v4
+- Added release --locked build to PR checks
+
 ## [0.2.0] - 2024-09-09
 
 ### 🚀 Features
