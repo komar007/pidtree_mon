@@ -32,7 +32,7 @@ fn entrypoint() -> Result<(), String> {
     let framework_res = with_daemon(
         PID_FILENAME,
         SOCKET_FILENAME,
-        Worker::new(UPDATE_INTERVAL),
+        |ctrl| Worker::new(UPDATE_INTERVAL, ctrl),
         Worker::handle_client,
         |stream| {
             client::run(
