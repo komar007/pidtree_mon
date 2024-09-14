@@ -94,8 +94,8 @@ Here we use per-core loads, mainly to detect potential single-core tight-loops i
         1 \
 ```
 
-This command can be used directly in tmux with `#()`. It uses the total processor usage by PID 1,
-which is not ideal, but will be good enough most of the time.
+This command can be used directly in tmux with `#()`. It approximates the total processor usage by
+PID 1, which is not ideal, but will be good enough most of the time.
 
 ## Why?
 
