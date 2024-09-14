@@ -24,9 +24,15 @@ impl Worker {
             loop {
                 let next_sample_at = Instant::now() + update_interval;
                 let current_ticks = get_ticks_since_boot().expect("should know time in ticks");
-                let (next, loads) = measure_pid_loads(prev, current_ticks);
-                let _ = sender.send(loads.into());
-                prev = Some(next);
+                let dt = current_ticks - prev.as_ref().map(|(t, _)| *t).unwrap_or(0u64);
+                let just_prev_loads = prev.take().map(|(_t, loads)| loads);
+                let (next, loads) = measure_pid_ticks(just_prev_loads);
+                let loads = loads
+                    .into_iter()
+                    .map(|(p, load)| (p, load as f32 / dt as f32))
+                    .collect();
+                let _ = sender.send(Arc::new(loads));
+                prev = Some((current_ticks, next));
                 sleep_until(next_sample_at).await;
             }
         });
@@ -75,7 +81,28 @@ impl Worker {
 }
 
 /// Perform one measurement of CPU loads for each process tree.
-fn measure_pid_loads(prev: Option<Sample>, current_ticks: u64) -> (Sample, HashMap<i32, f32>) {
+///
+/// Returns a pair consisting of:
+/// - the measured sample, which must be passed to another call to [`measure_pid_ticks`] in order
+///   to obtain the numbers of ticks used by each tree since now,
+/// - the result in form of a `PID -> ticks` mapping, where `PID` is a process ID ond `ticks` is the
+///   total number of ticks used by all processes in a process tree rooted in `PID`:
+///   - since the time the `prev` argument was captured (if `Some`), or
+///   - since system boot (if `None`).
+///
+/// In order to obtain meaningful process tree loads, each number of ticks returned from this
+/// function must be divided either by:
+/// - the number of ticks elapsed since the last measurement (which is the number of ticks a single
+///   core has had available since then) - in order to obtain a per-core relative load (`n` means
+///   "`n` full cores were used by a process tree"), or
+/// - the number of ticks elapsed since the last measurement times the number of cores
+///   (alternatively the sum of numbers of ticks available to each core since the last measurement,
+///   which allows to correct for the time "stolen" by host if running in a VM) - in order to
+///   obtain a per-system relative load (1 means "all CPU power is being used by a process tree").
+///
+/// Passing `None` as `prev` allows to measure the average CPU/core load of a process tree since
+/// boot, if the number of ticks is divided by the number of ticks since boot.
+fn measure_pid_ticks(prev: Option<Sample>) -> (Sample, HashMap<i32, i64>) {
     // The following words always refer to the following specific concepts:
     // total - total number of ticks used by some process or multiple processes since creation,
     // cumulated - the sum of values of a certain property over a process and all its descendants,
@@ -83,7 +110,6 @@ fn measure_pid_loads(prev: Option<Sample>, current_ticks: u64) -> (Sample, HashM
 
     let mut children: HashMap<_, Vec<_>> = HashMap::new();
     let all_procs = procfs::process::all_processes().expect("can't read /proc");
-    let dt = current_ticks - prev.as_ref().map(|prev| prev.t).unwrap_or(0);
     let samples = all_procs.filter_map(|prc| {
         let stat = prc.and_then(|prc| prc.stat()).ok()?;
         let sample = PidSample {
@@ -114,28 +140,26 @@ fn measure_pid_loads(prev: Option<Sample>, current_ticks: u64) -> (Sample, HashM
             .expect("actually cumulated must contain pid");
     }
     let cur = Sample {
-        t: current_ticks,
         pids: samples,
         children,
     };
 
-    // These are the loads of each process (without any descendants included) calculated as a ratio
-    // of the number of ticks spent since the last measurement to the total number of ticks
-    // elapsed since then.
-    // For the first measurement, it's the average loads since boot.
-    let self_loads_since_prev: HashMap<_, _> = cur
+    // These are the ticks used by each process (without any descendants included), i.e. the number
+    // of ticks spent since the last measurement
+    // For the first measurement, it's the number of ticks spent since boot.
+    let self_ticks_since_prev: HashMap<_, _> = cur
         .pids
         .iter()
         .map(|(pid, sample)| {
             let prev_sample = prev.as_ref().and_then(|prev| prev.pids.get(pid));
             let self_ticks_since_prev =
                 sample.total_self_ticks - prev_sample.map(|p| p.total_self_ticks).unwrap_or(0);
-            (*pid, (self_ticks_since_prev as f32 / dt as f32))
+            (*pid, self_ticks_since_prev)
         })
         .collect();
 
-    let almost_loads = get_cumulated(&cur.children, |id| {
-        *self_loads_since_prev
+    let almost_ticks = get_cumulated(&cur.children, |id| {
+        *self_ticks_since_prev
             .get(&id)
             .expect("itermediate shouldn't miss any value")
     });
@@ -159,13 +183,13 @@ fn measure_pid_loads(prev: Option<Sample>, current_ticks: u64) -> (Sample, HashM
             .total_self_ticks
     });
 
-    // Now, almost_loads contains loads based on ticks spent by all descendants still alive. But
-    // there are also descendants already dead now that have contributed to the total load:
+    // Now, almost_ticks contains ticks spent by all descendants still alive. But there are also
+    // descendants already dead now that have contributed to the total ticks:
     // 1. those that were spawned and then died between the last sample and now,
     // 2. those that were spawned before the last sample and died between the last sample and now -
-    //    their loads were taken into account in the previous measurement, but the ticks they spent
+    //    their ticks were taken into account in the previous measurement, but the ticks they spent
     //    between then and now have not been accounted for.
-    let final_loads = almost_loads.into_iter().map(|(pid, self_load)| {
+    let final_ticks = almost_ticks.into_iter().map(|(pid, self_ticks)| {
         let cur_total_subtree_ticks = cur
             .pids
             .get(&pid)
@@ -183,21 +207,19 @@ fn measure_pid_loads(prev: Option<Sample>, current_ticks: u64) -> (Sample, HashM
         // 1. spawned recently and already dead - ok,
         // 2. spawned earlier and already dead - they contribute the total ticks, even those spent
         //    before the previous measurement - not ok.
-        let ticks_of_recently_killed = (cur_total_subtree_ticks - prev_total_subtree_ticks) as i64;
+        let ticks_of_recently_killed = cur_total_subtree_ticks - prev_total_subtree_ticks;
         let until_prev = *prev_cumulated_total_ticks_killed_recently
             .get(&pid)
             .unwrap_or(&0);
         // And that's our offset described above the loop.
         let offset = ticks_of_recently_killed - until_prev as i64;
-        (pid, self_load + offset as f32 / dt as f32)
+        (pid, self_ticks as i64 + offset)
     });
-    let final_loads = final_loads.collect();
-    (cur, final_loads)
+    let final_ticks = final_ticks.collect();
+    (cur, final_ticks)
 }
 
 struct Sample {
-    /// Time in tics the sample was captured at
-    t: u64,
     /// A sample for every discovered process
     pids: HashMap<i32, PidSample>,
     /// The process tree based on the parent-child relationship in form of adjacency lists
