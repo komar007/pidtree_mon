@@ -7,6 +7,8 @@ use std::{ops::Not as _, str::FromStr, time::Duration};
     "\n",
     "Multiple fields can be passed via -f/--field. A basic field can be:\n",
     " * `sum' - sum of loads of all provided process trees,\n",
+    " * `min' - minimum load of all provided process trees,\n",
+    " * `max' - maximum load of all provided process trees,\n",
     " * `all_loads' - produces multiple fields, one for each process tree.\n",
     "\n",
     "The values are scaled per-core, so n means n whole cores are being used.\n",
@@ -63,6 +65,10 @@ pub struct Field(pub Source, pub Scale, pub Format);
 pub enum Source {
     /// The sum of all process trees' CPU usage as a field
     Sum,
+    /// The maximum of all process trees' CPU usage as a field
+    Max,
+    /// The maximum of all process trees' CPU usage as a field
+    Min,
     /// CPU usage of each process tree, one in each field
     AllLoads,
 }
@@ -129,10 +135,14 @@ impl FromStr for Field {
             .expect("splitn should produce at least 1 elment");
         match field {
             "" => Err("missing field name")?,
-            "sum" | "all_loads" | "sum_t" | "all_loads_t" => {
+            "sum" | "all_loads" | "min" | "max" | "sum_t" | "all_loads_t" | "min_t" | "max_t" => {
                 let (source, scale) = match field {
                     "sum" => (Source::Sum, Scale::OfCore),
                     "sum_t" => (Source::Sum, Scale::OfTotal),
+                    "min" => (Source::Min, Scale::OfCore),
+                    "min_t" => (Source::Min, Scale::OfTotal),
+                    "max" => (Source::Max, Scale::OfCore),
+                    "max_t" => (Source::Max, Scale::OfTotal),
                     "all_loads" => (Source::AllLoads, Scale::OfCore),
                     "all_loads_t" => (Source::AllLoads, Scale::OfTotal),
                     _ => panic!(),
