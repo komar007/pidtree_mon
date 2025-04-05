@@ -55,7 +55,6 @@ struct OutputLine<'a>(&'a Vec<Field>, &'a str, usize, Vec<f32>);
 impl<'f> Display for OutputLine<'f> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let OutputLine(spec, sep, num_cores, loads) = self;
-        assert!(!loads.is_empty());
         let mut any_written = false;
         for Field(source, scale, format) in spec.iter() {
             let scale = match scale {
@@ -65,12 +64,8 @@ impl<'f> Display for OutputLine<'f> {
             let i = loads.iter().copied().filter(|l| !l.is_nan());
             let inputs = match source {
                 Source::Sum => &vec![i.sum()],
-                Source::Max => &vec![i
-                    .reduce(|x, y| x.max(y))
-                    .expect("should have at least one load")],
-                Source::Min => &vec![i
-                    .reduce(|x, y| x.min(y))
-                    .expect("should have at least one load")],
+                Source::Max => &vec![i.reduce(|x, y| x.max(y)).unwrap_or(f32::NAN)],
+                Source::Min => &vec![i.reduce(|x, y| x.min(y)).unwrap_or(f32::NAN)],
                 Source::AllLoads => loads,
             };
             let inputs: Vec<f32> = inputs.iter().map(|i| i / scale).collect();
