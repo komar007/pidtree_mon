@@ -115,7 +115,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test() {
+    fn test_basic() {
         let fields = vec![
             Field(
                 Source::Sum,
@@ -143,5 +143,19 @@ mod tests {
         assert_eq!(o.to_string(), "xxxy0.500");
         let o = OutputLine(&fields, "xxx", 3, vec![]);
         assert_eq!(o.to_string(), "yxxx0.000");
+    }
+
+    #[test]
+    fn test_minmax() {
+        let fields = vec![
+            Field(Source::Min, Scale::OfCore, Format::Float(3)),
+            Field(Source::Max, Scale::OfCore, Format::Float(3)),
+        ];
+        let o = OutputLine(&fields, " ", 3, vec![0.5, 2.0, 3.5]);
+        assert_eq!(o.to_string(), "0.500 3.500");
+        let o = OutputLine(&fields, " ", 3, vec![-1.0, 0.0]);
+        assert_eq!(o.to_string(), "-1.000 0.000");
+        let o = OutputLine(&fields, " ", 3, vec![]);
+        assert_eq!(o.to_string(), "NaN NaN");
     }
 }
