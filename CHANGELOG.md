@@ -1,5 +1,28 @@
 # Changelog of `pidtree_mon`
 
+## [0.2.2] - 2025-04-05
+
+### 🚀 Features
+
+- Min and max fields
+- Formatting negative zero without the sign in the output
+
+### 🐛 Bug Fixes
+
+- Crash when calculating min/max without elements
+- Removed ellidable explicit lifetime
+
+### 📚 Documentation
+
+- Fixed example description in readme
+- Updated README.md
+- Declared rust-version
+- Added badges to README.md
+
+### 🧪 Testing
+
+- Added simple min/max tests
+
 ## [0.2.1] - 2024-09-14
 
 ### 🚀 Features
