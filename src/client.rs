@@ -80,7 +80,14 @@ impl<'f> Display for OutputLine<'f> {
                             Format::Percent(_) => 100.0,
                             _ => panic!(),
                         };
-                        write!(f, "{:.1$}", input * mul, *precision as usize)?
+                        // See https://github.com/rust-lang/rust/commit/490818851860fb257e23fe7aa0ee32eaffc4ba40,
+                        // but the user likely doesn't want to see -0.000...
+                        let normalized_input = if input == 0.0 {
+                            input.copysign(1.0)
+                        } else {
+                            input
+                        };
+                        write!(f, "{:.1$}", normalized_input * mul, *precision as usize)?
                     }
                     Format::IfThenElse {
                         test,
