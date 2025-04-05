@@ -13,6 +13,7 @@ keywords = ["cpu", "process", "linux", "cli", "utility"]
 version = "0.2.1"
 edition = "2021"
 
+rust-version = "1.79"
 
 [dependencies]
 tokio = { version = "1.39", features = ["full"] }
