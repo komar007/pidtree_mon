@@ -1,11 +1,17 @@
 # `pidtree_mon` - a CPU load monitor of process trees
 
-This utility monitors selected processes' CPU usage calculated as the total CPU usage for the whole
-process subtree. The process subtree is defined as the subtree of the process forest calculated
-according to the parent-child relationship between two PIDs.
+This utility monitors process trees' CPU usage.
 
-It is useful for example if you want to know the total CPU usage of your session, which you can
-display in [tmux](https://github.com/tmux/tmux) using the following configuration:
+As opposed to monitoring single processes, `pidtree_mon` monitors whole process trees, taking into
+account the fact that processes may die and be spawned, which changes the process trees in time.
+`pidtree_mon` attempts to use as much information as it can from the `/proc` filesystem to adjust
+the results as processes may appear and disappear between measurements.
+
+A process subtree is defined as the subtree of the process forest calculated according to the
+parent-child relationship between two PIDs.
+
+It is useful for example if you want to know the total CPU usage of your shell session, which you
+can display in [tmux](https://github.com/tmux/tmux) using the following configuration:
 
 ```sh
 %hidden WINDOW_LOAD="#( \
@@ -16,12 +22,6 @@ display in [tmux](https://github.com/tmux/tmux) using the following configuratio
 set -wg window-status-format "#I:#W#F [$WINDOW_LOAD]"
 set -wg window-status-current-format "#I:#W#F [$WINDOW_LOAD]"
 ```
-
-> [!TIP]
-> I haven't really found tmux to be very good at garbage-collecting the processes it spawns
-> per-window, so I actually recommend adding for example `-t 60` to limit the duration of the
-> monitor command. It appears that tmux will promptly re-spawn a process that exited, so it
-> shouldn't be noticeable and will spare some zombie processes.
 
 ## Usage
 
@@ -156,3 +156,7 @@ set -wg window-status-format "#I$WINDOW_FIRE#W#F"
 set -wg window-status-current-format "#I$WINDOW_FIRE#W#F"
 ```
 
+> [!TIP]
+> I recommend adding `-t 60` (or any other value) to limit how long pidtree_mon will print results.
+> tmux will promptly re-spawn a process that exited, so it shouldn't be noticeable and will spare
+> you some potential zombie processes when you close monitored windows.
