@@ -52,7 +52,7 @@ pub async fn run(
 
 struct OutputLine<'a>(&'a Vec<Field>, &'a str, usize, Vec<f32>);
 
-impl<'f> Display for OutputLine<'f> {
+impl Display for OutputLine<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let OutputLine(spec, sep, num_cores, loads) = self;
         let mut any_written = false;
