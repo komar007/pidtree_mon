@@ -1,5 +1,11 @@
 # `pidtree_mon` - a CPU load monitor of process trees
 
+![Crates.io License](https://img.shields.io/crates/l/pidtree_mon)
+[![Crates.io Version](https://img.shields.io/crates/v/pidtree_mon)](https://crates.io/crates/pidtree_mon/)
+![GitHub branch check runs](https://img.shields.io/github/check-runs/komar007/pidtree_mon/main)
+[![docs.rs](https://img.shields.io/docsrs/pidtree_mon)](https://docs.rs/pidtree_mon)
+![Crates.io MSRV](https://img.shields.io/crates/msrv/pidtree_mon)
+
 This utility monitors process trees' CPU usage.
 
 As opposed to monitoring single processes, `pidtree_mon` monitors whole process trees, taking into
