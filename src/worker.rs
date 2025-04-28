@@ -119,13 +119,12 @@ fn measure_pid_ticks(prev: Option<Sample>) -> (Sample, HashMap<i32, i64>) {
             // not include the ones that are still alive (and is not cumulated just yet!)
             cumulated_total_subtree_ticks: stat.cutime + stat.cstime,
         };
-        if stat.ppid != 0 {
-            children.entry(stat.ppid).or_default().push(stat.pid);
-        }
+        children.entry(stat.ppid).or_default().push(stat.pid);
         children.entry(stat.pid).or_default();
         Some((stat.pid, sample))
     });
     let mut samples: HashMap<_, _> = samples.collect();
+    children.retain(|pid, _| samples.contains_key(pid));
     let actually_cumulated_total_subtree_ticks = get_cumulated(&children, |id| {
         samples
             .get(&id)
