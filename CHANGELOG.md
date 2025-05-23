@@ -1,5 +1,15 @@
 # Changelog of `pidtree_mon`
 
+## [0.2.3] - 2025-05-23
+
+### 🐛 Bug Fixes
+
+- Assertion when ppid of some pid is not among pids
+
+### 📚 Documentation
+
+- Removed docs.rs shield, as it only makes sense for libraries
+
 ## [0.2.2] - 2025-04-05
 
 ### 🚀 Features
